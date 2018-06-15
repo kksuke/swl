@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Star Wars: Legion Wounds Simulator</title>
+    <meta name="viewport" content="width=device-width" />
+    <style type="text/css">
+        th {
+            background-color: lightblue;
+        }
+
+        th.head {
+            background-color: gray;
+        }
+    </style>
+</head>
+
+<body onload="calc()">
+    <script>
+        const WHITE = 0;
+        const BLACK = 1;
+        const RED = 2;
+
+        const BLANK = 0;
+        const HIT = 1;
+        const CRIT = 2;
+        const SURGE = 3;
+
+        const BLOCK = 1;
+
+        const A_WHITE_TABLE = [CRIT, HIT, SURGE, BLANK, BLANK, BLANK, BLANK, BLANK];
+        const A_BLACK_TABLE = [CRIT, HIT, HIT,   HIT,   SURGE, BLANK, BLANK, BLANK];
+        const A_RED_TABLE   = [CRIT, HIT, HIT,   HIT,   HIT,   HIT,   SURGE, BLANK];
+
+        const D_WHITE_TABLE = [BLOCK, SURGE, BLANK, BLANK, BLANK, BLANK];
+        const D_RED_TABLE   = [BLOCK, BLOCK, BLOCK, SURGE, BLANK, BLANK];
+
+        const GOOD = 0;
+        const BAD = 1;
+
+        const SURGE_NONE = BLANK;
+        const SURGE_HIT = HIT;
+        const SURGE_CRIT = CRIT;
+        
+        const COVER_NONE = 0;
+        const COVER_LIGHT = 1;
+        const COVER_HEAVY = 2;
+
+        class Results {
+            constructor() {
+                this.blanks = [0, 0, 0];
+                this.hits = [0, 0, 0];
+                this.crits = [0, 0, 0];
+            }
+
+            getBlank() {
+                return this.blanks[WHITE] + this.blanks[BLACK] + this.blanks[RED];
+            }
+
+            getHit() {
+                return this.hits[WHITE] + this.hits[BLACK] + this.hits[RED];
+            }
+
+            getCrit() {
+                return this.crits[WHITE] + this.crits[BLACK] + this.crits[RED];
+            }
+
+            addResult(result, diceType) {
+                if (result === BLANK) {
+                    this.blanks[diceType]++;
+                } else if (result === HIT) {
+                    this.hits[diceType]++;
+                } else if (result === CRIT) {
+                    this.crits[diceType]++;
+                } else {
+                    throw new Error();
+                }
+            }
+
+            removeBlank(prior) {
+                if (prior === GOOD) {
+                    for (var i = 2; i >= 0; i--) {
+                        if (this.blanks[i] > 0) {
+                            this.blanks[i]--;
+                            return new AttackDie(i);
+                        }
+                    }
+                } else {
+                    for (var i = 0; i <= 2; i++) {
+                        if (this.blanks[i] > 0) {
+                            this.blanks[i]--;
+                            return new AttackDie(i);
+                        }
+                    }
+                }
+                return undefined;
+            }
+
+            removeHit(prior) {
+                if (prior === GOOD) {
+                    for (var i = 2; i >= 0; i--) {
+                        if (this.hits[i] > 0) {
+                            this.hits[i]--;
+                            return new AttackDie(i);
+                        }
+                    }
+                } else {
+                    for (var i = 0; i <= 2; i++) {
+                        if (this.hits[i] > 0) {
+                            this.hits[i]--;
+                            return new AttackDie(i);
+                        }
+                    }
+                }
+                return undefined;
+            }
+
+            merge(other) {
+                for (var i = 0; i <= 2; i++) {
+                    this.blanks[i] += other.blanks[i];
+                    this.hits[i] += other.hits[i];
+                    this.crits[i] += other.crits[i];
+                }
+            }
+
+        }
+
+        class AttackPool {
+            constructor(white, black, red) {
+                this.dice = [];
+                for (var i = 0; i < white; i++) {
+                    this.dice.push(new AttackDie(WHITE));
+                }
+                for (var i = 0; i < black; i++) {
+                    this.dice.push(new AttackDie(BLACK));
+                }
+                for (var i = 0; i < red; i++) {
+                    this.dice.push(new AttackDie(RED));
+                }
+            }
+
+            roll(surge) {
+                var results = new Results();
+                for (var i = 0; i < this.dice.length; i++) {
+                    results.addResult(this.dice[i].roll(surge), this.dice[i].type);
+                }
+                return results;
+            }
+
+            add(die) {
+                this.dice.push(die);
+            }
+        }
+
+        class AttackDie {
+            constructor(type) {
+                this.type = type;
+            }
+
+            roll(surge) {
+                if (surge === undefined) {
+                    surge = SURGE_NONE;
+                }
+                var result = Math.floor(Math.random() * 8);
+                var diceTable;
+                if (this.type === WHITE) {
+                    diceTable = A_WHITE_TABLE;
+                } else if (this.type === BLACK) {
+                    diceTable = A_BLACK_TABLE;
+                } else if (this.type === RED) {
+                    diceTable = A_RED_TABLE;
+                } else {
+                    throw new Error();
+                }
+                var diceResult = diceTable[result];
+                if (diceResult === SURGE) {
+                    return surge;
+                } else {
+                    return diceResult;
+                }
+            }
+        }
+
+        function calcWounds(attacker, defender) {
+            var attackPool = new AttackPool(attacker.white, attacker.black, attacker.red);
+            var results = attackPool.roll(attacker.surge);
+            if (attacker.aim) {
+                var remainReroll = attacker.reroll;
+                var rerollPool = new AttackPool(0, 0, 0);
+                while (remainReroll > 0) {
+                    if (results.getBlank() > 0) {
+                        rerollPool.add(results.removeBlank(GOOD));
+                        remainReroll--;
+                        continue;
+                    } else if (results.getHit() > 0) {
+                        if (defender.armor) {
+                            if ((attacker.impact + defender.cover + defender.dodge) < results.getHit()) {
+                                rerollPool.add(results.removeHit(BAD));
+                                remainReroll--;
+                                continue;
+                            }
+                        } else {
+                            var rerollAll = false;
+                            var cancels = defender.cover + defender.dodge; // 0-3
+                            if (cancels >= results.getHit()) {
+                                if (cancels >= (results.getHit() + rerollPool.dice.length)) {
+                                    rerollAll = true;
+                                } else if (attacker.moreCrit && remainReroll > (cancels - results.getHit() - rerollPool.dice.length)) {
+                                    rerollAll = true;
+                                }
+                            }
+                            if (rerollAll) {
+                                while (remainReroll > 0) {
+                                    if (results.getHit() > 0) {
+                                        rerollPool.add(results.removeHit(BAD));
+                                        remainReroll--;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+                if (rerollPool.dice.length > 0) {
+                    results.merge(rerollPool.roll(attacker.surge));
+                }
+            }
+            var hits = results.getHit();
+            var crits = results.getCrit();
+            hits = Math.max(hits - defender.cover - defender.dodge, 0);
+            if (defender.armor) {
+                crits += Math.min(hits, attacker.impact);
+                hits = 0;
+            }
+            var hitsAndCrits = crits + hits;
+            var blocked = 0;
+            var deflected = 0;
+            var blank = 0;
+            var defenceDice = hitsAndCrits;
+            if (defender.impervious && attacker.pierce > 0) {
+                defenceDice += attacker.pierce;
+            }
+            for (var i = 0; i < defenceDice; i++) {
+                var defenceResult = Math.floor(Math.random() * 6);
+                var defenceTable;
+                if (defender.type === WHITE) {
+                    defenceTable = D_WHITE_TABLE;
+                } else if (defender.type === RED) {
+                    defenceTable = D_RED_TABLE;
+                } else {
+                    throw new Error();
+                }
+                var diceResult = defenceTable[defenceResult];
+                if (diceResult === BLOCK) {
+                    blocked++;
+                } else if (diceResult === SURGE) {
+                    if (defender.deflect) {
+                        blocked++;
+                        deflected++;
+                    } else if (defender.surge) {
+                        blocked++;
+                    } else {
+                        blank++;
+                    }
+                } else {
+                    blank++;
+                }
+            }
+            var rerollCount = Math.min(blank, defender.uncannyDodge);
+            for (var i = 0; i < rerollCount; i++) {
+                var defenceResult = Math.floor(Math.random() * 6);
+                var defenceTable;
+                if (defender.type === WHITE) {
+                    defenceTable = D_WHITE_TABLE;
+                } else if (defender.type === RED) {
+                    defenceTable = D_RED_TABLE;
+                } else {
+                    throw new Error();
+                }
+                var diceResult = defenceTable[defenceResult];
+                if (diceResult === BLOCK) {
+                    blocked++;
+                } else if (diceResult === SURGE) {
+                    if (defender.deflect) {
+                        blocked++;
+                        deflected++;
+                    } else if (defender.surge) {
+                        blocked++;
+                    }
+                }                
+            }
+
+
+            blocked = Math.max(blocked - attacker.pierce, 0);
+            return {wounds: hitsAndCrits - blocked, deflects: deflected};
+        }
+
+
+        function calc() {
+            var attacker = {
+                white: +document.getElementById("a_white").value,
+                black: +document.getElementById("a_black").value,
+                red: +document.getElementById("a_red").value,
+                surge: (document.getElementById("a_surge_none").checked ? SURGE_NONE :
+                    document.getElementById("a_surge_hit").checked ? SURGE_HIT : SURGE_CRIT),
+                aim: document.getElementById("a_aim").checked,
+                reroll: +document.getElementById("a_reroll").value,
+                moreCrit: document.getElementById("a_moreCrit").checked,
+                pierce: +document.getElementById("a_pierce").value,
+                impact: +document.getElementById("a_impact").value
+            }
+            var defender = {
+                type: (document.getElementById("d_white").checked ? WHITE : RED),
+                surge: document.getElementById("d_surge").checked,
+                armor: document.getElementById("d_armor").checked,
+                cover: (document.getElementById("d_cover_none").checked ? 0 :
+                    document.getElementById("d_cover_light").checked ? 1 : 2),
+                dodge: +document.getElementById("d_dodge").value,
+                deflect: document.getElementById("d_deflect").checked,
+                impervious: document.getElementById("d_impervious").checked,
+                uncannyDodge: +document.getElementById("d_uncanny_dodge").value
+            }
+            if (defender.deflect) {
+                if (defender.dodge <= 0 || !defender.surge) {
+                    document.getElementById("wounds").innerText = "if you check deflect, you must check surge and set dodge to positive.";
+                    document.getElementById("deflects").innerText = "-";
+                    return;
+                }
+                
+            }
+            var trials = +document.getElementById("trials").value;
+            var tempWounds = 0;
+            var tempDeflects = 0;
+            for (var i = 0; i < trials; i++) {
+                var result = calcWounds(attacker, defender);
+                tempWounds += result.wounds;
+                tempDeflects += result.deflects;
+            }
+            tempWounds = tempWounds / trials;
+            tempDeflects = tempDeflects / trials;
+            document.getElementById("wounds").innerText = tempWounds;
+            document.getElementById("deflects").innerText = tempDeflects;
+        }
+        function hideResult() {
+            document.getElementById("wounds").innerText = "some values are changed. please click calc button";
+            document.getElementById("deflects").innerText = "-";
+        }
+        function rebelTrooper() {
+            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function lukeSkywalker() {
+            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function atRt() {
+            changeDefender({type: WHITE, surge: false, armor: true, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function airspeeder() {
+            changeDefender({type: WHITE, surge: true, armor: true, cover: COVER_LIGHT, dodge: 0, deflect: false, impervious: false});
+        }
+        function leiaOrgana() {
+            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function fleetTrooper() {
+            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function hanSolo() {
+            changeDefender({type: WHITE, surge: true, uncannyDodge: 3});
+        }
+        function rebelCommando() {
+            changeDefender({type: WHITE, surge: true});
+        }        
+        function stormtrooper() {
+            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function darthVader() {
+            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function speederBikes() {
+            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_LIGHT, dodge: 0, deflect: false, impervious: false});
+        }
+        function atSt() {
+            changeDefender({type: WHITE, surge: true, armor: true, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function generalVeers() {
+            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }        
+        function snowtrooper() {
+            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+        }
+        function bobaFett() {
+            changeDefender({type: RED, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: true});            
+        }
+        function scoutTrooper() {
+            changeDefender({type: WHITE, surge: true});
+        }
+        function changeDefender(preset) {
+            if (preset.type === undefined) {
+                preset.type = WHITE;
+            }
+            if (preset.surge === undefined) {
+                preset.surge = false;
+            }
+            if (preset.armor === undefined) {
+                preset.armor = false;
+            }
+            if (preset.cover === undefined) {
+                preset.cover = COVER_NONE;
+            }
+            if (preset.dodge === undefined) {
+                preset.dodge = 0;
+            }
+            if (preset.deflect === undefined) {
+                preset.deflect = false;
+            }
+            if (preset.impervious === undefined) {
+                preset.impervious = false;
+            }
+            if (preset.uncannyDodge === undefined) {
+                preset.uncannyDodge = 0;
+            }
+            if (preset.type === WHITE) {
+                document.getElementById("d_white").checked = true;
+                document.getElementById("d_red").checked = false;
+            } else {
+                document.getElementById("d_white").checked = false;
+                document.getElementById("d_red").checked = true;
+            }
+            document.getElementById("d_surge").checked = preset.surge;
+            document.getElementById("d_armor").checked = preset.armor;
+            if (preset.cover === COVER_NONE) {
+                document.getElementById("d_cover_none").checked = true;
+                document.getElementById("d_cover_light").checked = false;
+                document.getElementById("d_cover_heavy").checked = false;
+            } else if (preset.cover === COVER_LIGHT) {
+                document.getElementById("d_cover_none").checked = false;
+                document.getElementById("d_cover_light").checked = true;
+                document.getElementById("d_cover_heavy").checked = false;
+            } else {
+                document.getElementById("d_cover_none").checked = false;
+                document.getElementById("d_cover_light").checked = false;
+                document.getElementById("d_cover_heavy").checked = true;
+            }
+            document.getElementById("d_dodge").value = preset.dodge;
+            document.getElementById("d_deflect").checked = preset.deflect;
+            document.getElementById("d_impervious").checked = preset.impervious;
+            document.getElementById("d_uncanny_dodge").value = preset.uncannyDodge;
+            hideResult();    
+        }
+    </script>
+    <h1>Wounds Simulator(Detailed version)</h1>
+    <table border="1">
+        <tr>
+            <th rowspan="2" class="head">Attack</th>
+            <th>white</th>
+            <th>black</th>
+            <th>red</th>
+            <th>surge</th>
+            <th>aim?</th>
+            <th># of reroll by aim</th>
+            <th>more crit</th>
+            <th>pierce</th>
+            <th>impact</th>
+        </tr>
+        <tr>
+            <td>
+                <input id="a_white" type="number" value="0" min="0" max="20" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_black" type="number" value="0" min="0" max="20" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_red" type="number" value="0" min="0" max="20" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_surge_none" type="radio" name="a_surge" checked onchange="hideResult()" />None
+                <input id="a_surge_hit" type="radio" name="a_surge" onchange="hideResult()" />Hit
+                <input id="a_surge_crit" type="radio" name="a_surge" onchange="hideResult()" />Crit </td>
+            <td>
+                <input id="a_aim" type="checkbox" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_reroll" type="number" value="2" min="0" max="10" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_moreCrit" type="checkbox" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_pierce" type="number" value="0" min="0" max="10" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="a_impact" type="number" value="0" min="0" max="10" onchange="hideResult()" />
+            </td>
+        </tr>
+        <tr>
+            <th rowspan="2" class="head">Defence</th>
+            <th colspan="1">dice type</th>
+            <th>surge?</th>
+            <th colspan="2">cover</th>
+            <th>dodge</th>
+            <th>deflect?</th>
+            <th>armor?</th>
+            <th>impervious?</th>
+            <th>uncanny dodge</th>
+        </tr>
+        <tr>
+            <td colspan="1">
+                <input id="d_white" type="radio" name="defence" checked onchange="hideResult()" />white
+                <input id="d_red" type="radio" name="defence" onchange="hideResult()" />red
+            </td>
+            <td>
+                <input id="d_surge" type="checkbox" onchange="hideResult()" />
+            </td>
+            <td colspan="2">
+                <input id="d_cover_none" type="radio" name="cover" checked onchange="hideResult()" /> None
+                <input id="d_cover_light" type="radio" name="cover" onchange="hideResult()" /> Light
+                <input id="d_cover_heavy" type="radio" name="cover" onchange="hideResult()" /> Heavy
+            </td>
+            <td>
+                <input id="d_dodge" type="number" value="0" min="0" max="10" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="d_deflect" type="checkbox" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="d_armor" type="checkbox" onchange="hideResult()" />
+            </td>
+            <td>
+                <input id="d_impervious" type="checkbox" onchange="hideResult()"/>
+            </td>
+            <td>
+                <input id="d_uncanny_dodge" type="number" value="0" min="0" max="10" onchange="hideResult()" />
+            </td>
+        </tr>
+        <tr>
+            <th class="head">Expected Wounds</th>
+            <td id="wounds" colspan="4" style="text-align:center;">0</td>
+            <th class="head">Deflects</th>
+            <td id="deflects" style="text-align:center;">0</td>
+            <th># of trials</th>
+            <td>
+                <input id="trials" type="number" value="10000" min="1" max="100000" onchange="hideResult()" />
+            </td>
+            <td>
+                <input type="button" value="calc" onclick="calc()">
+            </td>
+        </tr>
+    </table>
+</body>
+Preset Defenders: 
+<input type="button" value="Stormtroopers" onclick="stormtrooper()"/>
+<input type="button" value="Darth Vader" onclick="darthVader()"/>
+<input type="button" value="74-Z Speeder Bikes" onclick="speederBikes()"/>
+<input type="button" value="AT-ST" onclick="atSt()"/>
+<input type="button" value="General Veers" onclick="generalVeers()"/>
+<input type="button" value="Snowtroopers" onclick="snowtrooper()"/>
+<input type="button" value="Boba Fett" onclick="bobaFett()"/>
+<input type="button" value="Scout Troopers" onclick="scoutTrooper()"/>
+
+
+<input type="button" value="Rebel Troopers" onclick="rebelTrooper()"/>
+<input type="button" value="Luke Skywalker" onclick="lukeSkywalker()"/>
+<input type="button" value="AT-RT" onclick="atRt()"/>
+<input type="button" value="T-47 Airspeeder" onclick="airspeeder()"/>
+<input type="button" value="Leia Organa" onclick="leiaOrgana()"/>
+<input type="button" value="Fleet Troopers" onclick="fleetTrooper()"/>
+<input type="button" value="Han Solo" onclick="hanSolo()"/>
+<input type="button" value="Rebel Commandos" onclick="rebelCommando()"/>
+
+
+</html>
