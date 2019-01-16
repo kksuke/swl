@@ -234,6 +234,9 @@
                 crits += Math.min(hits, attacker.impact);
                 hits = 0;
             }
+            if (defender.armorX > 0) {
+                hits = Math.max(hits - defender.armorX, 0);
+            }
             var hitsAndCrits = crits + hits;
             var blocked = 0;
             var deflected = 0;
@@ -315,6 +318,7 @@
                 type: (document.getElementById("d_white").checked ? WHITE : RED),
                 surge: document.getElementById("d_surge").checked,
                 armor: document.getElementById("d_armor").checked,
+                armorX: +document.getElementById("d_armorX").value,
                 cover: (document.getElementById("d_cover_none").checked ? 0 :
                     document.getElementById("d_cover_light").checked ? 1 : 2),
                 dodge: +document.getElementById("d_dodge").value,
@@ -332,19 +336,26 @@
             }
             var trials = +document.getElementById("trials").value;
             var tempWounds = 0;
+            var tempPassengerWounds = 0;
             var tempDeflects = 0;
             for (var i = 0; i < trials; i++) {
                 var result = calcWounds(attacker, defender);
                 tempWounds += result.wounds;
+                if (result.wounds > 0) {
+                    tempPassengerWounds++;
+                }
                 tempDeflects += result.deflects;
             }
             tempWounds = tempWounds / trials;
+            tempPassengerWounds = tempPassengerWounds / trials;
             tempDeflects = tempDeflects / trials;
             document.getElementById("wounds").innerText = tempWounds;
+            document.getElementById("passengerWounds").innerText = tempPassengerWounds;
             document.getElementById("deflects").innerText = tempDeflects;
         }
         function hideResult() {
             document.getElementById("wounds").innerText = "some values are changed. please click calc button";
+            document.getElementById("passengerWounds").innerText = "-";
             document.getElementById("deflects").innerText = "-";
         }
         function rebelTrooper() {
@@ -497,10 +508,11 @@
             <th rowspan="2" class="head">Defence</th>
             <th colspan="1">dice type</th>
             <th>surge?</th>
-            <th colspan="2">cover</th>
+            <th>cover</th>
             <th>dodge</th>
             <th>deflect?</th>
             <th>armor?</th>
+            <th>armor X</th>
             <th>impervious?</th>
             <th>uncanny dodge</th>
         </tr>
@@ -512,7 +524,7 @@
             <td>
                 <input id="d_surge" type="checkbox" onchange="hideResult()" />
             </td>
-            <td colspan="2">
+            <td>
                 <input id="d_cover_none" type="radio" name="cover" checked onchange="hideResult()" /> None
                 <input id="d_cover_light" type="radio" name="cover" onchange="hideResult()" /> Light
                 <input id="d_cover_heavy" type="radio" name="cover" onchange="hideResult()" /> Heavy
@@ -527,6 +539,9 @@
                 <input id="d_armor" type="checkbox" onchange="hideResult()" />
             </td>
             <td>
+                <input id="d_armorX" type="number" value="0" min="0" onchange="hideResult()" />
+            </td>
+            <td>
                 <input id="d_impervious" type="checkbox" onchange="hideResult()"/>
             </td>
             <td>
@@ -535,7 +550,9 @@
         </tr>
         <tr>
             <th class="head">Expected Wounds</th>
-            <td id="wounds" colspan="4" style="text-align:center;">0</td>
+            <td id="wounds" colspan="2" style="text-align:center;">0</td>
+            <th class="head">Expected Passenger Wounds</th>
+            <td id="passengerWounds" style="text-align:center;">0</td>
             <th class="head">Deflects</th>
             <td id="deflects" style="text-align:center;">0</td>
             <th># of trials</th>
