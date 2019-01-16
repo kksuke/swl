@@ -235,6 +235,9 @@
                 hits = 0;
             }
             if (defender.armorX > 0) {
+                var hitsToCrits = Math.min(hits, attacker.impact);
+                crits += hitsToCrits;
+                hits -= hitsToCrits;
                 hits = Math.max(hits - defender.armorX, 0);
             }
             var hitsAndCrits = crits + hits;
