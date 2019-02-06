@@ -20,6 +20,7 @@
         const WHITE = 0;
         const BLACK = 1;
         const RED = 2;
+        const NONE = -1;
 
         const BLANK = 0;
         const HIT = 1;
@@ -29,11 +30,12 @@
         const BLOCK = 1;
 
         const A_WHITE_TABLE = [CRIT, HIT, SURGE, BLANK, BLANK, BLANK, BLANK, BLANK];
-        const A_BLACK_TABLE = [CRIT, HIT, HIT,   HIT,   SURGE, BLANK, BLANK, BLANK];
-        const A_RED_TABLE   = [CRIT, HIT, HIT,   HIT,   HIT,   HIT,   SURGE, BLANK];
+        const A_BLACK_TABLE = [CRIT, HIT, HIT, HIT, SURGE, BLANK, BLANK, BLANK];
+        const A_RED_TABLE = [CRIT, HIT, HIT, HIT, HIT, HIT, SURGE, BLANK];
 
         const D_WHITE_TABLE = [BLOCK, SURGE, BLANK, BLANK, BLANK, BLANK];
-        const D_RED_TABLE   = [BLOCK, BLOCK, BLOCK, SURGE, BLANK, BLANK];
+        const D_RED_TABLE = [BLOCK, BLOCK, BLOCK, SURGE, BLANK, BLANK];
+        const D_NONE_TABLE = [BLANK, BLANK, BLANK, BLANK, BLANK, BLANK]
 
         const GOOD = 0;
         const BAD = 1;
@@ -41,7 +43,7 @@
         const SURGE_NONE = BLANK;
         const SURGE_HIT = HIT;
         const SURGE_CRIT = CRIT;
-        
+
         const COVER_NONE = 0;
         const COVER_LIGHT = 1;
         const COVER_HEAVY = 2;
@@ -255,6 +257,8 @@
                     defenceTable = D_WHITE_TABLE;
                 } else if (defender.type === RED) {
                     defenceTable = D_RED_TABLE;
+                } else if (defender.type === NONE) {
+                    defenceTable = D_NONE_TABLE;
                 } else {
                     throw new Error();
                 }
@@ -274,7 +278,7 @@
                     blank++;
                 }
             }
-            var rerollCount = Math.min(blank, defender.uncannyDodge);
+            var rerollCount = Math.min(blank, defender.uncannyDodge + defender.dangerSense);
             for (var i = 0; i < rerollCount; i++) {
                 var defenceResult = Math.floor(Math.random() * 6);
                 var defenceTable;
@@ -282,6 +286,8 @@
                     defenceTable = D_WHITE_TABLE;
                 } else if (defender.type === RED) {
                     defenceTable = D_RED_TABLE;
+                } else if (defender.type === NONE) {
+                    defenceTable = D_NONE_TABLE;
                 } else {
                     throw new Error();
                 }
@@ -295,12 +301,12 @@
                     } else if (defender.surge) {
                         blocked++;
                     }
-                }                
+                }
             }
 
 
             blocked = Math.max(blocked - attacker.pierce, 0);
-            return {wounds: hitsAndCrits - blocked, deflects: deflected};
+            return { wounds: hitsAndCrits - blocked, deflects: deflected };
         }
 
 
@@ -318,7 +324,8 @@
                 impact: +document.getElementById("a_impact").value
             }
             var defender = {
-                type: (document.getElementById("d_white").checked ? WHITE : RED),
+                type: (document.getElementById("d_white").checked ? WHITE :
+                    document.getElementById("d_red").checked ? RED : NONE),
                 surge: document.getElementById("d_surge").checked,
                 armor: document.getElementById("d_armor").checked,
                 armorX: +document.getElementById("d_armorX").value,
@@ -327,7 +334,8 @@
                 dodge: +document.getElementById("d_dodge").value,
                 deflect: document.getElementById("d_deflect").checked,
                 impervious: document.getElementById("d_impervious").checked,
-                uncannyDodge: +document.getElementById("d_uncanny_dodge").value
+                uncannyDodge: +document.getElementById("d_uncanny_dodge").value,
+                dangerSense: +document.getElementById("d_danger_sense").value
             }
             if (defender.deflect) {
                 if (defender.dodge <= 0 || !defender.surge) {
@@ -335,7 +343,7 @@
                     document.getElementById("deflects").innerText = "-";
                     return;
                 }
-                
+
             }
             var trials = +document.getElementById("trials").value;
             var tempWounds = 0;
@@ -362,52 +370,73 @@
             document.getElementById("deflects").innerText = "-";
         }
         function rebelTrooper() {
-            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function lukeSkywalker() {
-            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function atRt() {
-            changeDefender({type: WHITE, surge: false, armor: true, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: false, armor: true, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function airspeeder() {
-            changeDefender({type: WHITE, surge: true, armor: true, cover: COVER_LIGHT, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: true, armor: true, cover: COVER_LIGHT, dodge: 0, deflect: false, impervious: false });
         }
         function leiaOrgana() {
-            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function fleetTrooper() {
-            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function hanSolo() {
-            changeDefender({type: WHITE, surge: true, uncannyDodge: 3});
+            changeDefender({ type: WHITE, surge: true, uncannyDodge: 3 });
         }
         function rebelCommando() {
-            changeDefender({type: WHITE, surge: true});
-        }        
+            changeDefender({ type: WHITE, surge: true });
+        }
+        function chewbacca() {
+            changeDefender({ type: WHITE });
+        }
+        function wookieeWarriors() {
+            changeDefender({ type: WHITE });
+        }
+        function rebelOfficer() {
+            changeDefender({ type: WHITE, surge: true });
+        }
+        function jynErso() {
+            changeDefender({ type: WHITE, surge: true });
+        }
         function stormtrooper() {
-            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function darthVader() {
-            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function speederBikes() {
-            changeDefender({type: WHITE, surge: true, armor: false, cover: COVER_LIGHT, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: true, armor: false, cover: COVER_LIGHT, dodge: 0, deflect: false, impervious: false });
         }
         function atSt() {
-            changeDefender({type: WHITE, surge: true, armor: true, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: WHITE, surge: true, armor: true, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function generalVeers() {
-            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
-        }        
+            changeDefender({ type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
+        }
         function snowtrooper() {
-            changeDefender({type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false});
+            changeDefender({ type: RED, surge: false, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: false });
         }
         function bobaFett() {
-            changeDefender({type: RED, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: true});            
+            changeDefender({ type: RED, surge: true, armor: false, cover: COVER_NONE, dodge: 0, deflect: false, impervious: true });
         }
         function scoutTrooper() {
-            changeDefender({type: WHITE, surge: true});
+            changeDefender({ type: WHITE, surge: true });
+        }
+        function emperorPalpatine() {
+            changeDefender({ type: RED, surge: true });
+        }
+        function imperialRoyalGuards() {
+            changeDefender({ type: RED});
+        }
+        function imperialOfficer() {
+            changeDefender({ type: WHITE, surge: true});
         }
         function changeDefender(preset) {
             if (preset.type === undefined) {
@@ -433,6 +462,9 @@
             }
             if (preset.uncannyDodge === undefined) {
                 preset.uncannyDodge = 0;
+            }
+            if (preset.dangerSense === undefined) {
+                preset.dangerSense = 0;
             }
             if (preset.type === WHITE) {
                 document.getElementById("d_white").checked = true;
@@ -460,22 +492,18 @@
             document.getElementById("d_deflect").checked = preset.deflect;
             document.getElementById("d_impervious").checked = preset.impervious;
             document.getElementById("d_uncanny_dodge").value = preset.uncannyDodge;
-            hideResult();    
+            document.getElementById("d_danger_sense").value = preset.dangerSense;
+            hideResult();
         }
     </script>
     <h1>Wounds Simulator(Detailed version)</h1>
     <table border="1">
         <tr>
-            <th rowspan="2" class="head">Attack</th>
+            <th rowspan="4" class="head">Attack</th>
             <th>white</th>
             <th>black</th>
             <th>red</th>
-            <th>surge</th>
-            <th>aim?</th>
-            <th># of reroll by aim</th>
-            <th>more crit</th>
-            <th>pierce</th>
-            <th>impact</th>
+            <th colspan="2">surge</th>
         </tr>
         <tr>
             <td>
@@ -487,10 +515,20 @@
             <td>
                 <input id="a_red" type="number" value="0" min="0" max="20" onchange="hideResult()" />
             </td>
-            <td>
+            <td colspan="2">
                 <input id="a_surge_none" type="radio" name="a_surge" checked onchange="hideResult()" />None
                 <input id="a_surge_hit" type="radio" name="a_surge" onchange="hideResult()" />Hit
-                <input id="a_surge_crit" type="radio" name="a_surge" onchange="hideResult()" />Crit </td>
+                <input id="a_surge_crit" type="radio" name="a_surge" onchange="hideResult()" />Crit
+            </td>
+        </tr>
+        <tr>
+            <th>aim?</th>
+            <th># of reroll by aim</th>
+            <th>more crit</th>
+            <th>pierce</th>
+            <th>impact</th>
+        </tr>
+        <tr>
             <td>
                 <input id="a_aim" type="checkbox" onchange="hideResult()" />
             </td>
@@ -508,19 +546,16 @@
             </td>
         </tr>
         <tr>
-            <th rowspan="2" class="head">Defence</th>
+            <th rowspan="4" class="head">Defence</th>
             <th colspan="1">dice type</th>
             <th>surge?</th>
             <th>cover</th>
             <th>dodge</th>
             <th>deflect?</th>
-            <th>armor?</th>
-            <th>armor X</th>
-            <th>impervious?</th>
-            <th>uncanny dodge</th>
         </tr>
         <tr>
             <td colspan="1">
+                <input id="d_none" type="radio" name="defence" onchange="hideResult()" />none
                 <input id="d_white" type="radio" name="defence" checked onchange="hideResult()" />white
                 <input id="d_red" type="radio" name="defence" onchange="hideResult()" />red
             </td>
@@ -538,6 +573,16 @@
             <td>
                 <input id="d_deflect" type="checkbox" onchange="hideResult()" />
             </td>
+
+        </tr>
+        <tr>
+            <th>armor?</th>
+            <th>armor X</th>
+            <th>impervious?</th>
+            <th>uncanny luck</th>
+            <th>danger sense(and suppression)</th>
+        </tr>
+        <tr>
             <td>
                 <input id="d_armor" type="checkbox" onchange="hideResult()" />
             </td>
@@ -545,15 +590,23 @@
                 <input id="d_armorX" type="number" value="0" min="0" onchange="hideResult()" />
             </td>
             <td>
-                <input id="d_impervious" type="checkbox" onchange="hideResult()"/>
+                <input id="d_impervious" type="checkbox" onchange="hideResult()" />
             </td>
             <td>
                 <input id="d_uncanny_dodge" type="number" value="0" min="0" max="10" onchange="hideResult()" />
             </td>
+            <td>
+                <input id="d_danger_sense" type="number" value="0" min="0" max="10" onchange="hideResult()" />
+            </td>
         </tr>
         <tr>
             <th class="head">Expected Wounds</th>
-            <td id="wounds" colspan="2" style="text-align:center;">0</td>
+            <td id="wounds" colspan="4" style="text-align:center;">0</td>
+            <td colspan="1">
+                <input type="button" value="calc" onclick="calc()">
+            </td>
+        </tr>
+        <tr>
             <th class="head">Expected Passenger Wounds</th>
             <td id="passengerWounds" style="text-align:center;">0</td>
             <th class="head">Deflects</th>
@@ -562,31 +615,40 @@
             <td>
                 <input id="trials" type="number" value="10000" min="1" max="100000" onchange="hideResult()" />
             </td>
-            <td>
-                <input type="button" value="calc" onclick="calc()">
-            </td>
+
         </tr>
     </table>
+    Preset Defenders:
+<p>
+<input type="button" value="Stormtroopers" onclick="stormtrooper()" />
+<input type="button" value="Darth Vader" onclick="darthVader()" />
+<input type="button" value="74-Z Speeder Bikes" onclick="speederBikes()" />
+<input type="button" value="AT-ST" onclick="atSt()" />
+<input type="button" value="General Veers" onclick="generalVeers()" />
+<input type="button" value="Snowtroopers" onclick="snowtrooper()" />
+<input type="button" value="Boba Fett" onclick="bobaFett()" />
+<input type="button" value="Scout Troopers" onclick="scoutTrooper()" />
+<input type="button" value="Emperor Palpatine" onclick="emperorPalpatine()" />
+<input type="button" value="Imperial Royal Guards" onclick="imperialRoyalGuards()" />
+<input type="button" value="Imperial Officer" onclick="imperialOfficer()" />
+
+</p>
+<p>
+<input type="button" value="Rebel Troopers" onclick="rebelTrooper()" />
+<input type="button" value="Luke Skywalker" onclick="lukeSkywalker()" />
+<input type="button" value="AT-RT" onclick="atRt()" />
+<input type="button" value="T-47 Airspeeder" onclick="airspeeder()" />
+<input type="button" value="Leia Organa" onclick="leiaOrgana()" />
+<input type="button" value="Fleet Troopers" onclick="fleetTrooper()" />
+<input type="button" value="Han Solo" onclick="hanSolo()" />
+<input type="button" value="Rebel Commandos" onclick="rebelCommando()" />
+<input type="button" value="Chewbacca" onclick="chewbacca()" />
+<input type="button" value="WookieeWarriors" onclick="wookieeWarriors()" />
+<input type="button" value="Rebel Officer" onclick="rebelOfficer()" />
+<input type="button" value="Jyn Erso" onclick="jynErso()" />
+
+</p>
 </body>
-Preset Defenders: 
-<input type="button" value="Stormtroopers" onclick="stormtrooper()"/>
-<input type="button" value="Darth Vader" onclick="darthVader()"/>
-<input type="button" value="74-Z Speeder Bikes" onclick="speederBikes()"/>
-<input type="button" value="AT-ST" onclick="atSt()"/>
-<input type="button" value="General Veers" onclick="generalVeers()"/>
-<input type="button" value="Snowtroopers" onclick="snowtrooper()"/>
-<input type="button" value="Boba Fett" onclick="bobaFett()"/>
-<input type="button" value="Scout Troopers" onclick="scoutTrooper()"/>
-
-
-<input type="button" value="Rebel Troopers" onclick="rebelTrooper()"/>
-<input type="button" value="Luke Skywalker" onclick="lukeSkywalker()"/>
-<input type="button" value="AT-RT" onclick="atRt()"/>
-<input type="button" value="T-47 Airspeeder" onclick="airspeeder()"/>
-<input type="button" value="Leia Organa" onclick="leiaOrgana()"/>
-<input type="button" value="Fleet Troopers" onclick="fleetTrooper()"/>
-<input type="button" value="Han Solo" onclick="hanSolo()"/>
-<input type="button" value="Rebel Commandos" onclick="rebelCommando()"/>
 
 
 </html>
