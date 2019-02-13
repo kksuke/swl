@@ -186,7 +186,9 @@
         function calcWounds(attacker, defender) {
             var attackPool = new AttackPool(attacker.white, attacker.black, attacker.red);
             var results = attackPool.roll(attacker.surge);
-            if (attacker.aim) {
+            var remainAim = attacker.aim;
+            while (remainAim > 0) {
+                remainAim--;
                 var remainReroll = attacker.reroll;
                 var rerollPool = new AttackPool(0, 0, 0);
                 while (remainReroll > 0) {
@@ -317,7 +319,7 @@
                 red: +document.getElementById("a_red").value,
                 surge: (document.getElementById("a_surge_none").checked ? SURGE_NONE :
                     document.getElementById("a_surge_hit").checked ? SURGE_HIT : SURGE_CRIT),
-                aim: document.getElementById("a_aim").checked,
+                aim: +document.getElementById("a_aim").value,
                 reroll: +document.getElementById("a_reroll").value,
                 moreCrit: document.getElementById("a_moreCrit").checked,
                 pierce: +document.getElementById("a_pierce").value,
@@ -433,10 +435,10 @@
             changeDefender({ type: RED, surge: true });
         }
         function imperialRoyalGuards() {
-            changeDefender({ type: RED});
+            changeDefender({ type: RED });
         }
         function imperialOfficer() {
-            changeDefender({ type: WHITE, surge: true});
+            changeDefender({ type: WHITE, surge: true });
         }
         function changeDefender(preset) {
             if (preset.type === undefined) {
@@ -522,7 +524,7 @@
             </td>
         </tr>
         <tr>
-            <th>aim?</th>
+            <th>aim</th>
             <th># of reroll by aim</th>
             <th>more crit</th>
             <th>pierce</th>
@@ -530,7 +532,7 @@
         </tr>
         <tr>
             <td>
-                <input id="a_aim" type="checkbox" onchange="hideResult()" />
+                <input id="a_aim" type="number" value="0" min="0" max="10" onchange="hideResult()" />
             </td>
             <td>
                 <input id="a_reroll" type="number" value="2" min="0" max="10" onchange="hideResult()" />
@@ -619,35 +621,35 @@
         </tr>
     </table>
     Preset Defenders:
-<p>
-<input type="button" value="Stormtroopers" onclick="stormtrooper()" />
-<input type="button" value="Darth Vader" onclick="darthVader()" />
-<input type="button" value="74-Z Speeder Bikes" onclick="speederBikes()" />
-<input type="button" value="AT-ST" onclick="atSt()" />
-<input type="button" value="General Veers" onclick="generalVeers()" />
-<input type="button" value="Snowtroopers" onclick="snowtrooper()" />
-<input type="button" value="Boba Fett" onclick="bobaFett()" />
-<input type="button" value="Scout Troopers" onclick="scoutTrooper()" />
-<input type="button" value="Emperor Palpatine" onclick="emperorPalpatine()" />
-<input type="button" value="Imperial Royal Guards" onclick="imperialRoyalGuards()" />
-<input type="button" value="Imperial Officer" onclick="imperialOfficer()" />
+    <p>
+        <input type="button" value="Stormtroopers" onclick="stormtrooper()" />
+        <input type="button" value="Darth Vader" onclick="darthVader()" />
+        <input type="button" value="74-Z Speeder Bikes" onclick="speederBikes()" />
+        <input type="button" value="AT-ST" onclick="atSt()" />
+        <input type="button" value="General Veers" onclick="generalVeers()" />
+        <input type="button" value="Snowtroopers" onclick="snowtrooper()" />
+        <input type="button" value="Boba Fett" onclick="bobaFett()" />
+        <input type="button" value="Scout Troopers" onclick="scoutTrooper()" />
+        <input type="button" value="Emperor Palpatine" onclick="emperorPalpatine()" />
+        <input type="button" value="Imperial Royal Guards" onclick="imperialRoyalGuards()" />
+        <input type="button" value="Imperial Officer" onclick="imperialOfficer()" />
 
-</p>
-<p>
-<input type="button" value="Rebel Troopers" onclick="rebelTrooper()" />
-<input type="button" value="Luke Skywalker" onclick="lukeSkywalker()" />
-<input type="button" value="AT-RT" onclick="atRt()" />
-<input type="button" value="T-47 Airspeeder" onclick="airspeeder()" />
-<input type="button" value="Leia Organa" onclick="leiaOrgana()" />
-<input type="button" value="Fleet Troopers" onclick="fleetTrooper()" />
-<input type="button" value="Han Solo" onclick="hanSolo()" />
-<input type="button" value="Rebel Commandos" onclick="rebelCommando()" />
-<input type="button" value="Chewbacca" onclick="chewbacca()" />
-<input type="button" value="WookieeWarriors" onclick="wookieeWarriors()" />
-<input type="button" value="Rebel Officer" onclick="rebelOfficer()" />
-<input type="button" value="Jyn Erso" onclick="jynErso()" />
+    </p>
+    <p>
+        <input type="button" value="Rebel Troopers" onclick="rebelTrooper()" />
+        <input type="button" value="Luke Skywalker" onclick="lukeSkywalker()" />
+        <input type="button" value="AT-RT" onclick="atRt()" />
+        <input type="button" value="T-47 Airspeeder" onclick="airspeeder()" />
+        <input type="button" value="Leia Organa" onclick="leiaOrgana()" />
+        <input type="button" value="Fleet Troopers" onclick="fleetTrooper()" />
+        <input type="button" value="Han Solo" onclick="hanSolo()" />
+        <input type="button" value="Rebel Commandos" onclick="rebelCommando()" />
+        <input type="button" value="Chewbacca" onclick="chewbacca()" />
+        <input type="button" value="WookieeWarriors" onclick="wookieeWarriors()" />
+        <input type="button" value="Rebel Officer" onclick="rebelOfficer()" />
+        <input type="button" value="Jyn Erso" onclick="jynErso()" />
 
-</p>
+    </p>
 </body>
 
 
