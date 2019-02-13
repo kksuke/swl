@@ -203,6 +203,16 @@
                                 remainReroll--;
                                 continue;
                             }
+                        } else if (defender.armorX > 0) {
+                            var tempHit = results.getHit();
+                            tempHit -= defender.dodge;
+                            tempHit -= defender.cover;
+                            tempHit -= attacker.impact;
+                            if (tempHit > 0 && tempHit <= defender.armorX) {
+                                rerollPool.add(results.removeHit(BAD));
+                                remainReroll--;
+                                continue;
+                            }
                         } else {
                             var rerollAll = false;
                             var cancels = defender.cover + defender.dodge; // 0-3
