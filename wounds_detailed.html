@@ -262,6 +262,7 @@
             if (defender.impervious && attacker.pierce > 0) {
                 defenceDice += attacker.pierce;
             }
+            defenceDice += defender.dangerSense;
             for (var i = 0; i < defenceDice; i++) {
                 var defenceResult = Math.floor(Math.random() * 6);
                 var defenceTable;
@@ -290,7 +291,7 @@
                     blank++;
                 }
             }
-            var rerollCount = Math.min(blank, defender.uncannyDodge + defender.dangerSense);
+            var rerollCount = Math.min(blank, defender.uncannyDodge);
             for (var i = 0; i < rerollCount; i++) {
                 var defenceResult = Math.floor(Math.random() * 6);
                 var defenceTable;
