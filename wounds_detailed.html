@@ -319,7 +319,7 @@
 
 
             blocked = Math.max(blocked - attacker.pierce, 0);
-            return { wounds: Max.max(hitsAndCrits - blocked, 0), deflects: deflected };
+            return { wounds: Math.max(hitsAndCrits - blocked, 0), deflects: deflected };
         }
 
 
